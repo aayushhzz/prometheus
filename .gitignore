@@ -2,6 +2,7 @@
 .#*
 /*.yaml
 /*.yml
+!/buildspec.yml
 *.exe
 
 /prometheus

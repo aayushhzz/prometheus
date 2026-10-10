@@ -1,0 +1,49 @@
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    HEXAGON_CI_BINARY_S3: s3://hexagon-ci-demo-029136913161-usw2/bin/35e9b3e/ci-impact-linux-amd64
+    DEMO_MODE: bootstrap
+
+phases:
+  install:
+    runtime-versions:
+      golang: 1.24
+    commands:
+      - go version
+      - aws --version
+  build:
+    commands:
+      - |
+        set -euo pipefail
+        HEAD_SHA=$(git rev-parse HEAD)
+        echo "Prometheus head: $HEAD_SHA"
+        echo "CodeBuild source: ${CODEBUILD_RESOLVED_SOURCE_VERSION:-unavailable}"
+        test "$HEAD_SHA" = "$CODEBUILD_RESOLVED_SOURCE_VERSION"
+        if [ "$DEMO_MODE" = bootstrap ]; then
+          echo 'Bootstrap: verify the fork and Go tests before measuring any scope.'
+          go test -count=1 ./util/strutil
+          exit 0
+        fi
+        if [ "$DEMO_MODE" != analyze ]; then
+          echo "Unknown DEMO_MODE: $DEMO_MODE" >&2
+          exit 2
+        fi
+        test -n "${BASE_SHA:-}"
+        echo "Prometheus base: $BASE_SHA"
+        git fetch --no-tags --depth=2 origin "$BASE_SHA"
+        git worktree add --detach /tmp/hexagon-prometheus-base "$BASE_SHA"
+        git diff --no-ext-diff --unified=0 "$BASE_SHA" "$HEAD_SHA" > /tmp/hexagon-change.diff
+        aws s3 cp "$HEXAGON_CI_BINARY_S3" /tmp/hexagon-ci-impact
+        chmod 700 /tmp/hexagon-ci-impact
+        set +e
+        /tmp/hexagon-ci-impact --base-repository /tmp/hexagon-prometheus-base --repository "$CODEBUILD_SRC_DIR" --diff /tmp/hexagon-change.diff
+        CANDIDATE_STATUS=$?
+        echo "Diagnostic candidate status: $CANDIDATE_STATUS"
+        go test -count=1 ./...
+        FULL_STATUS=$?
+        set -e
+        echo "Authoritative full suite status: $FULL_STATUS"
+        test "$FULL_STATUS" -eq 0
+        test "$CANDIDATE_STATUS" -eq 0
