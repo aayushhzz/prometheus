@@ -3,15 +3,7 @@ version: 0.2
 env:
   shell: bash
   variables:
-    HEXAGON_CI_BINARY_S3: s3://hexagon-ci-demo-029136913161-usw2/bin/35e9b3e/ci-impact-linux-amd64
-    GOPATH: /root/go
-    GOMODCACHE: /root/go/pkg/mod
-    GOCACHE: /root/.cache/go-build
-
-cache:
-  paths:
-    - '/root/go/pkg/mod/**/*'
-    - '/root/.cache/go-build/**/*'
+    HEXAGON_CI_BINARY_S3: s3://hexagon-ci-demo-029136913161-usw2/bin/6c9ff27/ci-impact-linux-amd64
 
 phases:
   install:
@@ -19,7 +11,6 @@ phases:
       golang: 1.24
     commands:
       - go version
-      - go env GOMODCACHE GOCACHE
   build:
     commands:
       - |
@@ -46,13 +37,6 @@ phases:
         git diff --no-ext-diff --unified=0 "$BASE_SHA" "$HEAD_SHA" > /tmp/hexagon-pr-change.diff
         aws s3 cp "$HEXAGON_CI_BINARY_S3" /tmp/hexagon-ci-impact
         chmod 700 /tmp/hexagon-ci-impact
-        set +e
-        /tmp/hexagon-ci-impact --base-repository /tmp/hexagon-prometheus-pr-base --repository "$CODEBUILD_SRC_DIR" --diff /tmp/hexagon-pr-change.diff
-        CANDIDATE_STATUS=$?
-        echo "Diagnostic candidate status: $CANDIDATE_STATUS"
-        go test -count=1 ./...
-        FULL_STATUS=$?
-        set -e
-        echo "Authoritative full suite status: $FULL_STATUS"
-        test "$FULL_STATUS" -eq 0
-        test "$CANDIDATE_STATUS" -eq 0
+        echo 'Subset-only demo: require a non-empty strict candidate set; unselected tests will not run.'
+        /tmp/hexagon-ci-impact --require-strict-subset --base-repository /tmp/hexagon-prometheus-pr-base --repository "$CODEBUILD_SRC_DIR" --diff /tmp/hexagon-pr-change.diff
+        echo 'Subset-only demo passed; the full repository suite was not run.'
