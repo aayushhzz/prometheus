@@ -4,6 +4,14 @@ env:
   shell: bash
   variables:
     HEXAGON_CI_BINARY_S3: s3://hexagon-ci-demo-029136913161-usw2/bin/35e9b3e/ci-impact-linux-amd64
+    GOPATH: /root/go
+    GOMODCACHE: /root/go/pkg/mod
+    GOCACHE: /root/.cache/go-build
+
+cache:
+  paths:
+    - '/root/go/pkg/mod/**/*'
+    - '/root/.cache/go-build/**/*'
 
 phases:
   install:
@@ -11,6 +19,7 @@ phases:
       golang: 1.24
     commands:
       - go version
+      - go env GOMODCACHE GOCACHE
   build:
     commands:
       - |
