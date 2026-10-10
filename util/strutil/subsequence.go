@@ -93,8 +93,8 @@ func (m *SubsequenceMatcher) Score(text string) float64 {
 
 // isASCII reports whether s contains only ASCII characters.
 func isASCII(s string) bool {
-	for _, c := range s {
-		if c >= 0x80 {
+	for i := 0; i < len(s); i++ {
+		if s[i] >= 0x80 {
 			return false
 		}
 	}
