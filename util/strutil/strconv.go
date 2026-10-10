@@ -43,6 +43,9 @@ func GraphLinkForExpression(expr string) string {
 // not starting with a digit 0-9), and hence should only be used if the label
 // name is prefixed with a known valid string.
 func SanitizeLabelName(name string) string {
+	if !invalidLabelCharRE.MatchString(name) {
+		return name
+	}
 	return invalidLabelCharRE.ReplaceAllString(name, "_")
 }
 
